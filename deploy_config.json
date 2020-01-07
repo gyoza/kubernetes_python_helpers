@@ -1,0 +1,6 @@
+{
+    "clusters" : {
+        "nonprod" : ["nonprodcluster"],
+        "prod" : ["prodcluster"]
+    }
+}
