@@ -1,10 +1,8 @@
 #!/usr/bin/env python3.8
 import os
-import sys
 import json
 import logging
 import urllib3
-import traceback
 from datetime import datetime
 from kubernetes import client, config
 
@@ -39,9 +37,13 @@ def get_environment(config_map, context):
 
 def get_version(context):
     try:
+        """
+           all of this urllib3 garbage because they "kubernetes" do not respect the snake.
+           This reduces the amount of warnings to 3, instead of 50. (exaggeration)
+        """
         logging.getLogger("urllib3").propagate = False
         client.configuration.urllib3.disable_warnings(True)
-        urllib3.disable_warnings()        
+        urllib3.disable_warnings()
         print(f"---- attempting to contact cluster {context}")
         client.configuration.urllib3.disable_warnings(True)
         version_client = client.VersionApi(api_client=config.new_client_from_config(context=each))

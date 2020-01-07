@@ -9,7 +9,10 @@ from kubernetes import client, config, watch
 
 
 class PrettyLogger(object):
-    """ -
+    """
+        H| at the start of the message signifies that this message
+        needs to be run through the color conversion process.
+        Without H| all color codes will be ignored.
         use PrettyLogger(log_level="warn", msg="H|sup yo (colorcode|highlight) (colorcode|me MULTIPLE TIMES!)")
 
     """
