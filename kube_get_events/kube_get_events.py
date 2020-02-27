@@ -1,11 +1,14 @@
 #!/usr/bin/env python3.8
-import sys
-import inspect
-from urllib3.exceptions import ProtocolError
-import re
+
 from pick import pick
 from datetime import datetime
+from urllib3.exceptions import ProtocolError
 from kubernetes import client, config, watch
+
+import re
+import sys
+import json
+import inspect
 
 
 class PrettyLogger(object):
@@ -90,6 +93,9 @@ for each in context:
     if each not in clean_context:
         clean_context.append(each)
 
+# ghetto
+my_filter = sys.argv[2] if "-f" in sys.argv else None
+
 if __name__ == "__main__":
     chosen_context, _ = pick(clean_context, title="Pick the context to load")
     core_client = client.CoreV1Api(api_client=config.new_client_from_config(context=chosen_context))
@@ -107,6 +113,15 @@ if __name__ == "__main__":
                 message = f"{message:117.117}"
                 message = message.rstrip(' ')
                 message = f"{message}..."
-            PrettyLogger(log_level=event_type, msg=f"H|(hmagenta|{chosen_context:{context_len}.{context_len}}):(magenta|{namespace:>15.15}):(hblue|{name:<20.20}) - {message}")
+            if my_filter:
+                #print(name, namespace, event)
+                r = re.compile(f'.*{my_filter}.*')
+                my_list = [name, namespace]
+                matches = list(filter(r.match, my_list))
+                if matches:
+                    PrettyLogger(log_level=event_type, msg=f"H|(hmagenta|{chosen_context:{context_len}.{context_len}}):(magenta|{namespace:>15.15}):(hblue|{name:<20.20}) - {message}")
+            else:
+                PrettyLogger(log_level=event_type, msg=f"H|(hmagenta|{chosen_context:{context_len}.{context_len}}):(magenta|{namespace:>15.15}):(hblue|{name:<20.20}) - {message}")
     except ProtocolError as e:
         PrettyLogger(log_level="warn", msg="Web Stream connection broken! Rebuilding")
+        pass
