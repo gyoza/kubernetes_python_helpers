@@ -1,5 +1,7 @@
 #!/usr/bin/env python3.8
 
+
+from textwrap import wrap, TextWrapper
 from pick import pick
 from datetime import datetime
 from urllib3.exceptions import ProtocolError
@@ -7,8 +9,25 @@ from kubernetes import client, config, watch
 
 import re
 import sys
-import json
 import inspect
+import argparse
+
+
+class SmartFormatter(argparse.HelpFormatter):
+    def _split_lines(self, text, width):
+        if text.startswith('R|'):
+            return text[2:].splitlines()
+        # this is the RawTextHelpFormatter._split_lines
+        return argparse.HelpFormatter._split_lines(self, text, width)
+
+
+def config_parser():
+    """ argparse """
+    parser = argparse.ArgumentParser(description="hit ec2 for results", formatter_class=SmartFormatter, epilog="example: ")
+    parser.add_argument("-f", required=False, help="R|search event text for WORD\n\nexample: mycontainer", default=None)
+    parser.add_argument("-w", action='store_true', required=False, help="R|warnings loglevel only")
+    parser.add_argument("-n", action='store_true', required=False, help="R|normal loglevel only")
+    return parser
 
 
 class PrettyLogger(object):
@@ -94,9 +113,19 @@ for each in context:
         clean_context.append(each)
 
 # ghetto
-my_filter = sys.argv[2] if "-f" in sys.argv else None
+
 
 if __name__ == "__main__":
+    parser = config_parser()
+    args = parser.parse_args()
+    my_filter = args.f if args.f is not None else None
+    if args.n:
+        message_type = "Normal"
+    if args.w:
+        message_type = "Warning"
+    else:
+        message_type = None
+    wrapper = TextWrapper(initial_indent="* ")
     chosen_context, _ = pick(clean_context, title="Pick the context to load")
     core_client = client.CoreV1Api(api_client=config.new_client_from_config(context=chosen_context))
     w = watch.Watch()
@@ -109,19 +138,33 @@ if __name__ == "__main__":
             name = metadata.name
             message = event['object'].message.replace('(', "[").replace(")", "]")
             context_len = len(chosen_context)
-            if len(message) > 120:
-                message = f"{message:117.117}"
-                message = message.rstrip(' ')
-                message = f"{message}..."
-            if my_filter:
-                #print(name, namespace, event)
-                r = re.compile(f'.*{my_filter}.*')
-                my_list = [name, namespace]
-                matches = list(filter(r.match, my_list))
-                if matches:
-                    PrettyLogger(log_level=event_type, msg=f"H|(hmagenta|{chosen_context:{context_len}.{context_len}}):(magenta|{namespace:>15.15}):(hblue|{name:<20.20}) - {message}")
-            else:
-                PrettyLogger(log_level=event_type, msg=f"H|(hmagenta|{chosen_context:{context_len}.{context_len}}):(magenta|{namespace:>15.15}):(hblue|{name:<20.20}) - {message}")
+            wrapped = False
+            print_msg = False
+            if event_type:
+                if len(message) > 120:
+                    wrapped = True
+                    message = "\n".join(wrap(f"\n{message.lstrip()}", break_on_hyphens=False, width=100)).lstrip()
+                if my_filter:
+                    #print(f"filtering for {my_filter}")
+                    #print(name, namespace, event)
+                    r = re.compile(f'.*{my_filter}.*')
+                    my_list = [name, namespace, message, event_type]
+                    matches = list(filter(r.match, my_list))    
+                    #print(matches)
+                    if matches:
+                        if wrapped:
+                            PrettyLogger(log_level=event_type, msg=f"H|(hmagenta|{chosen_context:{context_len}.{context_len}}):(magenta|{namespace:>15.15}):(hblue|{name:<20.20}) - [MULTI] {message}")
+                            #print(type(message))
+                            #print(message)
+                        else:
+                            PrettyLogger(log_level=event_type, msg=f"H|(hmagenta|{chosen_context:{context_len}.{context_len}}):(magenta|{namespace:>15.15}):(hblue|{name:<20.20}) - {message}")
+                else:
+                    if wrapped:
+                        PrettyLogger(log_level=event_type, msg=f"H|(hmagenta|{chosen_context:{context_len}.{context_len}}):(magenta|{namespace:>15.15}):(hblue|{name:<20.20}) - [MULTI] {message}")
+                        #print(type(message))
+                        #print(message)
+                    else:
+                        PrettyLogger(log_level=event_type, msg=f"H|(hmagenta|{chosen_context:{context_len}.{context_len}}):(magenta|{namespace:>15.15}):(hblue|{name:<20.20}) - {message}")
     except ProtocolError as e:
         PrettyLogger(log_level="warn", msg="Web Stream connection broken! Rebuilding")
         pass
