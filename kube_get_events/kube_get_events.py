@@ -7,9 +7,7 @@ import json
 import signal
 import inspect
 import argparse
-#from textwrap import wrap, TextWrapper
 from pick import pick
-from datetime import datetime
 from urllib3.exceptions import ProtocolError
 from pprint import pformat
 from kubernetes import client, config, watch
@@ -20,10 +18,7 @@ from contextlib import contextmanager
 from rich.console import Console
 from rich.columns import Columns
 from rich.table import Table
-from rich.measure import Measurement
-from rich import color
 from rich import box
-from rich.text import Text
 from rich.live import Live
 from kubernetes.config.config_exception import ConfigException
 
