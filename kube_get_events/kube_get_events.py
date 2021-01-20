@@ -130,7 +130,6 @@ if __name__ == "__main__":
         core_client = client.CoreV1Api(api_client=config.new_client_from_config(context=chosen_context))
         w = watch.Watch()
         console = Console()
-        #table = Table(show_footer=False, show_header=True, header_style="bold magenta", expand=True)
         table = Table(show_footer=False, show_header=True, expand=True)
         table.row_styles = ["none", "dim"]
         table.add_column("created on", style="cyan", header_style="bold cyan")
